@@ -4,13 +4,12 @@ import networkx as nx
 
 class GraphUtil:
 
-    def generate_grafo(self):
+    def generate_grafo(self, vertice):
         g = nx.Graph()
         g.add_nodes_from(['Jajá', 'Jejé', 'Juju'])
         g.add_edge('Jajá', 'Jejé', weight=0.4)
         g.add_edge('Jajá', 'Juju', weight=0.6)
         g.add_edge('Jejé', 'Juju', weight=0.2)
-        plt.subplot(121)
         nx.draw(g, node_color='#A0CBE2',
                 width=2, with_labels=True, font_weight='bold')
         plt.show()
