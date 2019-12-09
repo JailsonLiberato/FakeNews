@@ -23,7 +23,8 @@ class Main:
         search_words = "Bolsonaro"
         date_since = "2018-01-01"
         quantity_results = 5
-        self.__tweets = tweepy.Cursor(self.__api.search, q=search_words, lang="pt", since=date_since)\
+        language = 'pt'
+        self.__tweets = tweepy.Cursor(self.__api.search, q=search_words, lang=language, since=date_since)\
             .items(quantity_results)
 
     def __fill_vertice(self):
