@@ -1,6 +1,7 @@
 import tweepy
 from password_constants import PasswordConstants
 from vertice import Vertice
+from graph_service import GraphService
 
 
 class Main:
@@ -9,6 +10,8 @@ class Main:
     def __init__(self):
         self.__api = self.__authenticator()
         self.__tweets = []
+        self.__vertices = []
+        self.__graph_service = GraphService()
 
     @staticmethod
     def __authenticator():
@@ -29,14 +32,14 @@ class Main:
 
     def __fill_vertice(self):
         """Carrega os vértices."""
-        vertices = []
         self.__query_tweets()
         for tweet in self.__tweets:
-            vertices.append(Vertice(tweet, self.__api))
+            self.__vertices.append(Vertice(tweet, self.__api))
 
     def execute(self):
         """Método principal de execução."""
         self.__fill_vertice()
+        self.__graph_service.execute(self.__vertices)
 
 
 if __name__ == "__main__":
