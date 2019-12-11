@@ -30,15 +30,20 @@ class Main:
         self.__tweets = tweepy.Cursor(self.__api.search, q=search_words, lang=language, since=date_since)\
             .items(quantity_results)
 
-    def __fill_vertice(self):
-        """Carrega os vértices."""
-        self.__query_tweets()
+    def __get_tweet_by_max_retweet(self):
+        """Retorna o twitter com maior número de retweets."""
+        tweet_temp = None
         for tweet in self.__tweets:
-            self.__vertices.append(Vertice(tweet, self.__api))
+            if tweet_temp is None:
+                tweet_temp = tweet
+            elif tweet.retweet_count > tweet_temp.retweet_count:
+                tweet_temp = tweet
+        return tweet_temp
 
     def execute(self):
         """Método principal de execução."""
-        self.__fill_vertice()
+        self.__query_tweets()
+        tweet_selected = self.__get_tweet_by_max_retweet()
         self.__graph_service.execute(self.__vertices)
 
 
