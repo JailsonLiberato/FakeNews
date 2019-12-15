@@ -1,7 +1,7 @@
 class Vertice:
     """Classe responsável pelo agrupamento de vértices."""
 
-    def __init__(self, tweet, api):
+    def __init__(self, tweet):
         self.__id = tweet.author.id
         self.__value = tweet.text
         self.__screen_name = tweet.author.screen_name
