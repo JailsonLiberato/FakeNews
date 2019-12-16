@@ -5,9 +5,6 @@ class Vertice:
         self.__id = tweet.author.id
         self.__value = tweet.text
         self.__screen_name = tweet.author.screen_name
-        if hasattr(tweet, 'retweeted_status'):
-            self.__retweets = tweet.retweeted_status
-        #self.__followers = api.friends_ids(tweet.author.screen_name)
         self.__vertices = []
 
     @property
@@ -21,10 +18,6 @@ class Vertice:
     @property
     def screen_name(self):
         return self.__screen_name
-
-    @property
-    def retweets(self):
-        return self.__retweets
 
     @property
     def followers(self):

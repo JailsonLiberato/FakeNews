@@ -21,9 +21,13 @@ class Main:
         selected_tweet = self.__get_tweet_by_max_retweet()
         self.__main_vertice = Vertice(selected_tweet)
         selected_tweet_ids = self.__api.friends_ids(selected_tweet.author.screen_name)
-        retweets = self.__api.retweets(selected_tweet.id, 100)
-
-        self.__graph_service.execute(self.__vertices)
+        retweets = self.__query_retweets_by_id(selected_tweet)
+        for ret in retweets:
+            if ret.user.id in selected_tweet_ids:
+                self.__main_vertice.vertices.append(Vertice(ret))
+            else:
+                self.__retweets.append(ret)
+        self.__graph_service.execute(self.__main_vertice)
 
     @staticmethod
     def __authenticator():
@@ -39,8 +43,11 @@ class Main:
         date_since = QueryConstants.DATE_SINCE
         quantity_results = QueryConstants.QUANTITY_RESULTS
         language = QueryConstants.QUERY_LANGUAGE
-        self.__tweets = tweepy.Cursor(self.__api.search, q=search_words, lang=language, since=date_since) \
+        self.__tweets = tweepy.Cursor(self.__api.search, q=search_words, lang=language, since=date_since, ) \
             .items(quantity_results)
+
+    def __query_retweets_by_id(self, selected_twitter):
+        return self.__api.retweets(selected_twitter.retweeted_status.id, 500)
 
     def __get_tweet_by_max_retweet(self):
         """Retorna o twitter com maior número de retweets."""
