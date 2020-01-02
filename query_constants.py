@@ -1,6 +1,5 @@
 class QueryConstants:
 
     QUERY_LANGUAGE: str = 'pt'
-    QUANTITY_RESULTS: int = 300
-    DATE_SINCE: str = "2018-01-01"
-    SEARCH_WORLD = ['Bolsonaro']
+    QUANTITY_RESULTS: int = 100
+    SEARCH_WORLD = 'Bolsonaro since:2018-12-12'
