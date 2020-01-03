@@ -21,8 +21,25 @@ class Main:
 
     def execute(self):
         """Método de execução da classe."""
-        #self.__generate_json()
+        #self.__generate_tweets_json()
         self.__open_json()
+        self.__choose_main_tweet()
+
+    def __choose_main_tweet(self):
+        tweet = []
+        for tw in self.__tweets:
+            print("User: ", tw['user']['screen_name'])
+            print('Text: ', tw['text'])
+            print('Follows: ', tw['user']['followers_count'])
+            print('Friends: ', tw['user']['friends_count'])
+            print('-------------------------')
+
+    def __check_is_retweet(self, tweettext):
+        if tweettext.startswith("rt @") == True:
+            print('This tweet is a retweet')
+        else:
+            print('This tweet is not retweet')
+
 
     def __open_json(self):
         """Abre o arquivo JSON e extrai os tweets."""
@@ -31,7 +48,7 @@ class Main:
             filetypes=(("JSON files", "*.json"), ("all files", "*.*")))
         with open(filename_path) as json_file:
             data = json.load(json_file)
-            self.__tweets = data['tweets'].items()
+            self.__tweets = list(data['tweets'].values())
 
     def __generate_tweets_json(self):
         """Gerador de tweets de json."""
