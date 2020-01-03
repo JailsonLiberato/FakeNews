@@ -9,6 +9,7 @@ import os
 
 
 class Main:
+    """Classe principal do desenvolvimento."""
 
     def __init__(self):
         self.__auth = OAuthHandler(
@@ -16,21 +17,25 @@ class Main:
         self.__auth.set_access_token(
             PasswordConstants.ACCESS_TOKEN, PasswordConstants.ACCESS_TOKEN_SECRET)
         self.__api = API(self.__auth)
+        self.__tweets = []
 
     def execute(self):
-        #self.__generate()
+        """Método de execução da classe."""
+        #self.__generate_json()
         self.__open_json()
 
     def __open_json(self):
+        """Abre o arquivo JSON e extrai os tweets."""
         filename_path = tkinter.filedialog.askopenfilename(
             initialdir=os.getcwd(), title="Select json file...",
             filetypes=(("JSON files", "*.json"), ("all files", "*.*")))
         with open(filename_path) as json_file:
             data = json.load(json_file)
-            print(data['tweets']['tweet1']['text'])
+            self.__tweets = data['tweets'].items()
 
-    def __generate(self):
-        keywords_to_track = ['#rstats', '#python']
+    def __generate_tweets_json(self):
+        """Gerador de tweets de json."""
+        keywords_to_track = ['#python']
         listen = SListener(self.__api)
         stream = Stream(self.__auth, listen)
         stream.filter(track=keywords_to_track)

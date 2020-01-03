@@ -2,6 +2,8 @@ import tweepy
 
 
 class SListener(tweepy.StreamListener):
+    """Classe Listener de Stream Twitter."""
+
     def __init__(self, api):
         self.api = api
         self.__save_file = open('file.json', 'w')
@@ -9,6 +11,7 @@ class SListener(tweepy.StreamListener):
         self.__n = 0
 
     def on_data(self, tweet):
+        """Captura o evento de dados."""
         tw_string = '"tweet' + str(self.__n) + '"' + ':'
         self.__save_file.write(tw_string)
         self.__save_file.write(str(tweet))
