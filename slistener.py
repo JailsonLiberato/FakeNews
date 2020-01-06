@@ -16,7 +16,7 @@ class SListener(tweepy.StreamListener):
         self.__save_file.write(tw_string)
         self.__save_file.write(str(tweet))
         self.__n += 1
-        if self.__n < 3:
+        if self.__n < 15:
             self.__save_file.write(', ')
             return True
         else:

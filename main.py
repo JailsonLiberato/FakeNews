@@ -7,6 +7,8 @@ from tweepy import API
 from tweepy import OAuthHandler
 from tweepy import Stream
 
+from network import Network
+from network_service import NetworkService
 from password_constants import PasswordConstants
 from slistener import SListener
 from tweet import Tweet
@@ -30,16 +32,43 @@ class Main:
                              consumer_secret=PasswordConstants.CONSUMER_SECRET,
                              access_token=PasswordConstants.ACCESS_TOKEN,
                              access_token_secret=PasswordConstants.ACCESS_TOKEN_SECRET)
+        self.__network_service = NetworkService()
+        self.__network = None
 
     def execute(self):
         """Método de execução da classe."""
-        # self.__generate_tweets_json()
-        self.__open_json()
-        self.__build_tweet_list()
-        self.__choose_main_tweet()
-        self.__get_retweets_by_id()
-        self.__get_friends_by_id()
-        self.__get_followers_by_id()
+        self.__generate_tweets_json()
+
+    """" self.__open_json()
+     self.__build_tweet_list()
+     self.__choose_main_tweet()
+     self.__get_retweets_by_id()
+     self.__get_friends_by_id()
+     self.__get_followers_by_id()
+     self.__create_network()
+     self.__network_service.generate_network(self.__network)
+     self.__network_service.plot_network()"""
+
+    def __create_network(self, temp_network=[], flag=False):
+        """Criando a rede."""
+        if not temp_network and not flag:
+            self.__network = Network(self.__selected_tweet.user_id)
+            for user in self.__users_retweets:
+                network = Network(user)
+                if user in self.__get_followers_by_id:
+                    self.__network.children.append(network)
+                else:
+                    temp_network.append(network)
+        else:
+            while not temp_network:
+                list_temp = []
+                for net in self.__network.children:
+                    if net in temp_network:
+                        self.__network.children.append(net)
+                        list_temp.append(net)
+                temp_network.remove(list_temp)
+
+                self.__create_network(temp_network=temp_network, flag=True)
 
     def __get_retweets_by_id(self):
         """Retorna uma lista de usuários que retuitaram a mensagem escolhida."""
@@ -66,8 +95,9 @@ class Main:
         """Constrói a lista de tweets."""
         tweets = []
         for tw in self.__tweets:
-            tweets.append(Tweet(tw['id'], tw['user']['id'], tw['user']['screen_name'], tw['text'], tw['user']['followers_count'],
-                                tw['user']['friends_count']))
+            tweets.append(
+                Tweet(tw['id'], tw['user']['id'], tw['user']['screen_name'], tw['text'], tw['user']['followers_count'],
+                      tw['user']['friends_count']))
         self.__tweets = tweets
 
     def __choose_main_tweet(self):
