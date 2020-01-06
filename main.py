@@ -1,11 +1,15 @@
+import json
+import os
+import tkinter.filedialog
+
+from twarc import Twarc
 from tweepy import API
 from tweepy import OAuthHandler
 from tweepy import Stream
-from slistener import SListener
+
 from password_constants import PasswordConstants
-import tkinter.filedialog
-import json
-import os
+from slistener import SListener
+from tweet import Tweet
 
 
 class Main:
@@ -18,28 +22,67 @@ class Main:
             PasswordConstants.ACCESS_TOKEN, PasswordConstants.ACCESS_TOKEN_SECRET)
         self.__api = API(self.__auth)
         self.__tweets = []
+        self.__selected_tweet = None
+        self.__users_retweets = []
+        self.__friends = []
+        self.__followers = []
+        self.__twarc = Twarc(consumer_key=PasswordConstants.CONSUMER_KEY,
+                             consumer_secret=PasswordConstants.CONSUMER_SECRET,
+                             access_token=PasswordConstants.ACCESS_TOKEN,
+                             access_token_secret=PasswordConstants.ACCESS_TOKEN_SECRET)
 
     def execute(self):
         """Método de execução da classe."""
-        #self.__generate_tweets_json()
+        # self.__generate_tweets_json()
         self.__open_json()
+        self.__build_tweet_list()
         self.__choose_main_tweet()
+        self.__get_retweets_by_id()
+        self.__get_friends_by_id()
+        self.__get_followers_by_id()
+
+    def __get_retweets_by_id(self):
+        """Retorna uma lista de usuários que retuitaram a mensagem escolhida."""
+        users_retweets = []
+        for tweet in self.__twarc.retweets(self.__selected_tweet.id):
+            users_retweets.append(tweet['user']['id_str'])
+        self.__users_retweets = users_retweets
+
+    def __get_friends_by_id(self):
+        """Retorna a lista de friends do usuário do tweet principal."""
+        users = []
+        for user in self.__twarc.friend_ids(user=self.__selected_tweet.user_id):
+            users.append(user)
+        self.__friends = users
+
+    def __get_followers_by_id(self):
+        """Retorna a lista de followers do usuário do tweet principal."""
+        users = []
+        for user in self.__twarc.follower_ids(user=self.__selected_tweet.user_id):
+            users.append(user)
+        self.__followers = users
+
+    def __build_tweet_list(self):
+        """Constrói a lista de tweets."""
+        tweets = []
+        for tw in self.__tweets:
+            tweets.append(Tweet(tw['id'], tw['user']['id'], tw['user']['screen_name'], tw['text'], tw['user']['followers_count'],
+                                tw['user']['friends_count']))
+        self.__tweets = tweets
 
     def __choose_main_tweet(self):
-        tweet = []
+        """Escolhe o tweet com mais followers."""
+        tweet = self.__tweets[0]
         for tw in self.__tweets:
-            print("User: ", tw['user']['screen_name'])
-            print('Text: ', tw['text'])
-            print('Follows: ', tw['user']['followers_count'])
-            print('Friends: ', tw['user']['friends_count'])
-            print('-------------------------')
+            if tweet.followers_count < tw.followers_count:
+                tweet = tw
+        self.__selected_tweet = tweet
 
     def __check_is_retweet(self, tweettext):
         if tweettext.startswith("rt @") == True:
             print('This tweet is a retweet')
         else:
             print('This tweet is not retweet')
-
 
     def __open_json(self):
         """Abre o arquivo JSON e extrai os tweets."""
