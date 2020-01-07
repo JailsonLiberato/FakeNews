@@ -2,7 +2,7 @@ import json
 import os
 import tkinter.filedialog
 
-from twarc import Twarc
+from requests_oauthlib import OAuth1Session
 from tweepy import API
 from tweepy import OAuthHandler
 from tweepy import Stream
@@ -28,24 +28,31 @@ class Main:
         self.__users_retweets = []
         self.__friends = []
         self.__followers = []
-        self.__twarc = Twarc(consumer_key=PasswordConstants.CONSUMER_KEY,
-                             consumer_secret=PasswordConstants.CONSUMER_SECRET,
-                             access_token=PasswordConstants.ACCESS_TOKEN,
-                             access_token_secret=PasswordConstants.ACCESS_TOKEN_SECRET)
+        self.__session = OAuth1Session(PasswordConstants.CONSUMER_KEY, PasswordConstants.CONSUMER_SECRET,
+                                       PasswordConstants.ACCESS_TOKEN,
+                                       PasswordConstants.ACCESS_TOKEN_SECRET)
         self.__network_service = NetworkService()
         self.__network = None
 
-    def execute(self): # self.__generate_tweets_json()
+    def execute(self):  # self.__generate_tweets_json()
         self.__open_json()
         self.__build_tweet_list()
         self.__choose_main_tweet()
         self.__get_retweets_by_id()
         self.__get_friends_by_id()
         self.__get_followers_by_id()
-        self.__create_network()
+        """self.__create_network()
         self.__network_service.generate_network(self.__network)
-        self.__network_service.plot_network()
+        self.__network_service.plot_network()"""
 
+    def __get_trend_topics(self):
+        session = OAuth1Session(PasswordConstants.CONSUMER_KEY, PasswordConstants.CONSUMER_SECRET,
+                                PasswordConstants.ACCESS_TOKEN,
+                                PasswordConstants.ACCESS_TOKEN_SECRET)
+        response = session.get("https://api.twitter.com/1.1/trends/place.json?id=23424768")
+        brazils = json.loads(response.content)[0]["trends"]
+        for trend in brazils:
+            print(trend["name"])
 
     def __create_network(self, temp_network=[], flag=False):
         """Criando a rede."""
@@ -68,30 +75,26 @@ class Main:
 
                 self.__create_network(temp_network=temp_network, flag=True)
 
-
     def __get_retweets_by_id(self):
         """Retorna uma lista de usuários que retuitaram a mensagem escolhida."""
-        users_retweets = []
-        for tweet in self.__twarc.retweets(self.__selected_tweet.id):
-            users_retweets.append(tweet['user']['id_str'])
-        self.__users_retweets = users_retweets
-
+        response = self.__session.get(
+            "https://api.twitter.com/1.1/statuses/retweeters/ids.json?id=" + str(self.__selected_tweet.id)
+            + "&stringify_ids=true")
+        self.__users_retweets = json.loads(response.content)['ids']
 
     def __get_friends_by_id(self):
         """Retorna a lista de friends do usuário do tweet principal."""
-        users = []
-        for user in self.__twarc.friend_ids(user=self.__selected_tweet.user_id):
-            users.append(user)
-        self.__friends = users
-
+        response = self.__session.get(
+            "https://api.twitter.com/1.1/friends/list.json?user_id=" + str(
+                self.__selected_tweet.user_id))
+        self.__friends = json.loads(response.content)['users']
 
     def __get_followers_by_id(self):
         """Retorna a lista de followers do usuário do tweet principal."""
-        users = []
-        for user in self.__twarc.follower_ids(user=self.__selected_tweet.user_id):
-            users.append(user)
-        self.__followers = users
-
+        response = self.__session.get(
+            "https://api.twitter.com/1.1/followers/ids.json?user_id=" + str(
+                self.__selected_tweet.user_id))
+        self.__followers = json.loads(response.content)['ids']
 
     def __build_tweet_list(self):
         """Constrói a lista de tweets."""
@@ -102,7 +105,6 @@ class Main:
                       tw['user']['friends_count']))
         self.__tweets = tweets
 
-
     def __choose_main_tweet(self):
         """Escolhe o tweet com mais followers."""
         tweet = self.__tweets[0]
@@ -111,13 +113,11 @@ class Main:
                 tweet = tw
         self.__selected_tweet = tweet
 
-
     def __check_is_retweet(self, tweettext):
         if tweettext.startswith("rt @") == True:
             print('This tweet is a retweet')
         else:
             print('This tweet is not retweet')
-
 
     def __open_json(self):
         """Abre o arquivo JSON e extrai os tweets."""
@@ -127,7 +127,6 @@ class Main:
         with open(filename_path) as json_file:
             data = json.load(json_file)
             self.__tweets = list(data['tweets'].values())
-
 
     def __generate_tweets_json(self):
         """Gerador de tweets de json."""
