@@ -1,139 +1,102 @@
 import json
 import os
-import tkinter.filedialog
 
-from requests_oauthlib import OAuth1Session
-from tweepy import API
-from tweepy import OAuthHandler
-from tweepy import Stream
+from TwitterAPI import TwitterAPI
 
-from network import Network
-from network_service import NetworkService
-from password_constants import PasswordConstants
-from slistener import SListener
+from constants import Constants
 from tweet import Tweet
 
 
 class Main:
-    """Classe principal do desenvolvimento."""
+    """Classe principal do programa."""
 
     def __init__(self):
-        self.__auth = OAuthHandler(
-            PasswordConstants.CONSUMER_KEY, PasswordConstants.CONSUMER_SECRET)
-        self.__auth.set_access_token(
-            PasswordConstants.ACCESS_TOKEN, PasswordConstants.ACCESS_TOKEN_SECRET)
-        self.__api = API(self.__auth)
+        self.__api = self.__get_authentication()
+        self.__save_file = None
         self.__tweets = []
-        self.__selected_tweet = None
-        self.__users_retweets = []
-        self.__friends = []
-        self.__followers = []
-        self.__session = OAuth1Session(PasswordConstants.CONSUMER_KEY, PasswordConstants.CONSUMER_SECRET,
-                                       PasswordConstants.ACCESS_TOKEN,
-                                       PasswordConstants.ACCESS_TOKEN_SECRET)
-        self.__network_service = NetworkService()
-        self.__network = None
+        self.__selected_tweet: Tweet = None
 
-    def execute(self):  # self.__generate_tweets_json()
-        self.__open_json()
-        self.__build_tweet_list()
-        self.__choose_main_tweet()
-        self.__get_retweets_by_id()
-        self.__get_friends_by_id()
-        self.__get_followers_by_id()
-        """self.__create_network()
-        self.__network_service.generate_network(self.__network)
-        self.__network_service.plot_network()"""
+    def execute(self):
+        """Execução principal da classe."""
+        # self.__find_fake_news()
+        self.__find_real_news()
 
-    def __get_trend_topics(self):
-        session = OAuth1Session(PasswordConstants.CONSUMER_KEY, PasswordConstants.CONSUMER_SECRET,
-                                PasswordConstants.ACCESS_TOKEN,
-                                PasswordConstants.ACCESS_TOKEN_SECRET)
-        response = session.get("https://api.twitter.com/1.1/trends/place.json?id=23424768")
-        brazils = json.loads(response.content)[0]["trends"]
-        for trend in brazils:
-            print(trend["name"])
+    def __get_authentication(self):
+        """Realiza a autenticação do Twitter."""
+        return TwitterAPI(Constants.CONSUMER_KEY, Constants.CONSUMER_SECRET,
+                          Constants.ACCESS_TOKEN, Constants.ACCESS_TOKEN_SECRET)
 
-    def __create_network(self, temp_network=[], flag=False):
-        """Criando a rede."""
-        if not temp_network and not flag:
-            self.__network = Network(self.__selected_tweet.user_id)
-            for user in self.__users_retweets:
-                network = Network(user)
-                if user in self.__get_followers_by_id:
-                    self.__network.children.append(network)
-                else:
-                    temp_network.append(network)
+    def __find_fake_news(self):
+        """Encontra fake news."""
+        search_term = 'Haddad kit gay, lang:pt'
+        self.__execute_network(search_term)
+
+    def __find_real_news(self):
+        """Encontra real news"""
+        search_term = 'Auto da compadecida, lang:pt'
+        self.__execute_network(search_term)
+
+    def __execute_network(self, search_term):
+        """Executa a rede."""
+        if self.__check_json_file():
+            self.__find_tweet(search_term)
         else:
-            while not temp_network:
-                list_temp = []
-                for net in self.__network.children:
-                    if net in temp_network:
-                        self.__network.children.append(net)
-                        list_temp.append(net)
-                temp_network.remove(list_temp)
+            self.__load_tweets()
+        self.__get_retweets()
+        self.__get_friends()
+        self.__create_network()
 
-                self.__create_network(temp_network=temp_network, flag=True)
+    def __check_json_file(self):
+        """Checa se o arquivo json foi criado."""
+        return len(os.listdir(Constants.FOLDER_PATH)) == 0
 
-    def __get_retweets_by_id(self):
-        """Retorna uma lista de usuários que retuitaram a mensagem escolhida."""
-        response = self.__session.get(
-            "https://api.twitter.com/1.1/statuses/retweeters/ids.json?id=" + str(self.__selected_tweet.id)
-            + "&stringify_ids=true")
-        self.__users_retweets = json.loads(response.content)['ids']
+    def __load_tweets(self):
+        """Carrega a consulta dos tweets do arquivo json."""
+        with open(Constants.FOLDER_PATH + Constants.FILE_NAME) as json_file:
+            x = json_file.read()
+            for tweet in json.loads(x)['results']:
+                retweet_count: int = 0
+                if 'retweeted_status' in tweet:
+                    retweet_count: int = tweet['retweeted_status']['retweet_count']
+                followers_count: int = tweet['user']['followers_count']
+                friends_count: int = tweet['user']['friends_count']
+                tweet_id = tweet['id']
+                user_id = tweet['user']['id']
+                tweet_text = tweet['text']
+                t: Tweet = Tweet(tweet_id, user_id, tweet_text, followers_count, friends_count, retweet_count)
+                self.__tweets.append(t)
+        self.__get_best_tweet()
 
-    def __get_friends_by_id(self):
-        """Retorna a lista de friends do usuário do tweet principal."""
-        response = self.__session.get(
-            "https://api.twitter.com/1.1/friends/list.json?user_id=" + str(
-                self.__selected_tweet.user_id))
-        self.__friends = json.loads(response.content)['users']
+    def __find_tweet(self, search_term):
+        """Encontra o tweet."""
+        tweet_result = self.__api.request('tweets/search/%s/:%s' % (Constants.PRODUCT, Constants.LABEL),
+                                          {'query': search_term})
+        self.__save_file = open(Constants.FOLDER_PATH + Constants.FILE_NAME, 'w')
+        self.__save_file.write(json.dumps(tweet_result.json()))
+        self.__save_file.close()
+        self.__load_tweets()
+        self.__get_best_tweet()
 
-    def __get_followers_by_id(self):
-        """Retorna a lista de followers do usuário do tweet principal."""
-        response = self.__session.get(
-            "https://api.twitter.com/1.1/followers/ids.json?user_id=" + str(
-                self.__selected_tweet.user_id))
-        self.__followers = json.loads(response.content)['ids']
+    def __get_best_tweet(self):
+        """Selecionar o tweet com mais seguidores."""
+        tweet_selected: Tweet = self.__tweets[0]
+        for tweet in self.__tweets:
+            if tweet_selected.retweet_count < tweet.retweet_count and tweet_selected.followers_count < \
+                    tweet.followers_count:
+                tweet_selected = tweet
+        self.__selected_tweet = tweet_selected
 
-    def __build_tweet_list(self):
-        """Constrói a lista de tweets."""
-        tweets = []
-        for tw in self.__tweets:
-            tweets.append(
-                Tweet(tw['id'], tw['user']['id'], tw['user']['screen_name'], tw['text'], tw['user']['followers_count'],
-                      tw['user']['friends_count']))
-        self.__tweets = tweets
+    def __get_retweets(self):
+        """Recupera os retweets."""
+        pass
 
-    def __choose_main_tweet(self):
-        """Escolhe o tweet com mais followers."""
-        tweet = self.__tweets[0]
-        for tw in self.__tweets:
-            if tweet.followers_count < tw.followers_count:
-                tweet = tw
-        self.__selected_tweet = tweet
+    def __get_friends(self):
+        """Busca os amigos do usuário que escreveu o tweet."""
+        pass
 
-    def __check_is_retweet(self, tweettext):
-        if tweettext.startswith("rt @") == True:
-            print('This tweet is a retweet')
-        else:
-            print('This tweet is not retweet')
-
-    def __open_json(self):
-        """Abre o arquivo JSON e extrai os tweets."""
-        filename_path = tkinter.filedialog.askopenfilename(
-            initialdir=os.getcwd(), title="Select json file...",
-            filetypes=(("JSON files", "*.json"), ("all files", "*.*")))
-        with open(filename_path) as json_file:
-            data = json.load(json_file)
-            self.__tweets = list(data['tweets'].values())
-
-    def __generate_tweets_json(self):
-        """Gerador de tweets de json."""
-        keywords_to_track = ['#python']
-        listen = SListener(self.__api)
-        stream = Stream(self.__auth, listen)
-        stream.filter(track=keywords_to_track)
+    def __create_network(self):
+        """Cria a rede."""
+        pass
 
 
 if __name__ == "__main__":
