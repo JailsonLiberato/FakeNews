@@ -2,6 +2,7 @@ import json
 import os
 
 from TwitterAPI import TwitterAPI
+from requests_oauthlib import OAuth1Session
 
 from constants import Constants
 from tweet import Tweet
@@ -56,14 +57,18 @@ class Main:
             x = json_file.read()
             for tweet in json.loads(x)['results']:
                 retweet_count: int = 0
+                retweeted_status_id = None
                 if 'retweeted_status' in tweet:
                     retweet_count: int = tweet['retweeted_status']['retweet_count']
+                    retweeted_status_id = tweet['retweeted_status']['id']
                 followers_count: int = tweet['user']['followers_count']
                 friends_count: int = tweet['user']['friends_count']
                 tweet_id = tweet['id']
                 user_id = tweet['user']['id']
                 tweet_text = tweet['text']
-                t: Tweet = Tweet(tweet_id, user_id, tweet_text, followers_count, friends_count, retweet_count)
+
+                t: Tweet = Tweet(tweet_id, user_id, tweet_text, followers_count, friends_count, retweeted_status_id,
+                                 retweet_count)
                 self.__tweets.append(t)
         self.__get_best_tweet()
 
@@ -88,7 +93,15 @@ class Main:
 
     def __get_retweets(self):
         """Recupera os retweets."""
-        pass
+        oauth = OAuth1Session(Constants.CONSUMER_KEY,
+                              client_secret=Constants.CONSUMER_SECRET,
+                              resource_owner_key=Constants.ACCESS_TOKEN,
+                              resource_owner_secret=Constants.ACCESS_TOKEN_SECRET)
+        url: str = 'https://api.twitter.com/1.1/statuses/retweeters/ids.json'
+        params = {"id": str(self.__selected_tweet.retweeted_status_id), "count": "100", "stringify_ids": "true"}
+        response = oauth.get(url, params=params)
+        print("Response status: %s" % response.status_code)
+        print("Body: %s" % response.text)
 
     def __get_friends(self):
         """Busca os amigos do usuário que escreveu o tweet."""
