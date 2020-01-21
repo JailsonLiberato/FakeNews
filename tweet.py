@@ -30,3 +30,7 @@ class Tweet:
     @property
     def retweeted_status_id(self):
         return self.__retweeted_status_id
+
+    @property
+    def user_id(self):
+        return self.__user_id

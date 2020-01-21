@@ -13,8 +13,12 @@ class Main:
 
     def __init__(self):
         self.__api = self.__get_authentication()
+        self.__oauth = self.__get_other_authentication()
         self.__save_file = None
         self.__tweets = []
+        self.__retweets = []
+        self.__friends = []
+        self.__follows = []
         self.__selected_tweet: Tweet = None
 
     def execute(self):
@@ -22,7 +26,15 @@ class Main:
         # self.__find_fake_news()
         self.__find_real_news()
 
-    def __get_authentication(self):
+    @staticmethod
+    def __get_other_authentication():
+        return OAuth1Session(Constants.CONSUMER_KEY,
+                             client_secret=Constants.CONSUMER_SECRET,
+                             resource_owner_key=Constants.ACCESS_TOKEN,
+                             resource_owner_secret=Constants.ACCESS_TOKEN_SECRET)
+
+    @staticmethod
+    def __get_authentication():
         """Realiza a autenticação do Twitter."""
         return TwitterAPI(Constants.CONSUMER_KEY, Constants.CONSUMER_SECRET,
                           Constants.ACCESS_TOKEN, Constants.ACCESS_TOKEN_SECRET)
@@ -47,7 +59,8 @@ class Main:
         self.__get_friends()
         self.__create_network()
 
-    def __check_json_file(self):
+    @staticmethod
+    def __check_json_file():
         """Checa se o arquivo json foi criado."""
         return len(os.listdir(Constants.FOLDER_PATH)) == 0
 
@@ -93,19 +106,17 @@ class Main:
 
     def __get_retweets(self):
         """Recupera os retweets."""
-        oauth = OAuth1Session(Constants.CONSUMER_KEY,
-                              client_secret=Constants.CONSUMER_SECRET,
-                              resource_owner_key=Constants.ACCESS_TOKEN,
-                              resource_owner_secret=Constants.ACCESS_TOKEN_SECRET)
         url: str = 'https://api.twitter.com/1.1/statuses/retweeters/ids.json'
         params = {"id": str(self.__selected_tweet.retweeted_status_id), "count": "100", "stringify_ids": "true"}
-        response = oauth.get(url, params=params)
-        print("Response status: %s" % response.status_code)
-        print("Body: %s" % response.text)
+        response = self.__oauth.get(url, params=params)
+        self.__retweets = json.loads(response.text)["ids"]
 
     def __get_friends(self):
         """Busca os amigos do usuário que escreveu o tweet."""
-        pass
+        url: str = 'https://api.twitter.com/1.1/friends/ids.json'
+        params = {"user_id": self.__selected_tweet.user_id}
+        response = self.__oauth.get(url, params=params)
+        self.__friends = json.loads(response.text)["ids"]
 
     def __create_network(self):
         """Cria a rede."""
