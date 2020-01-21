@@ -5,6 +5,7 @@ from TwitterAPI import TwitterAPI
 from requests_oauthlib import OAuth1Session
 
 from constants import Constants
+from network import Network
 from tweet import Tweet
 
 
@@ -41,12 +42,12 @@ class Main:
 
     def __find_fake_news(self):
         """Encontra fake news."""
-        search_term = 'Haddad kit gay, lang:pt'
+        search_term = 'Haddad kit gay -is:retweet -is:reply  lang:pt'
         self.__execute_network(search_term)
 
     def __find_real_news(self):
         """Encontra real news"""
-        search_term = 'Auto da compadecida, lang:pt'
+        search_term = 'Auto da compadecida lang:pt'
         self.__execute_network(search_term)
 
     def __execute_network(self, search_term):
@@ -97,10 +98,13 @@ class Main:
 
     def __get_best_tweet(self):
         """Selecionar o tweet com mais seguidores."""
-        tweet_selected: Tweet = self.__tweets[0]
+        tweet_selected: Tweet = None
         for tweet in self.__tweets:
-            if tweet_selected.retweet_count < tweet.retweet_count and tweet_selected.followers_count < \
-                    tweet.followers_count:
+            if tweet_selected is None:  # RT' not in tweet.tweet_text and
+                tweet_selected = tweet
+            elif tweet_selected is not None and tweet_selected.retweet_count < tweet.retweet_count \
+                    and tweet_selected.followers_count < \
+                    tweet.followers_count:  # and 'RT' not in tweet.tweet_text:
                 tweet_selected = tweet
         self.__selected_tweet = tweet_selected
 
@@ -117,10 +121,16 @@ class Main:
         params = {"user_id": self.__selected_tweet.user_id}
         response = self.__oauth.get(url, params=params)
         self.__friends = json.loads(response.text)["ids"]
+        self.__friends = [str(item) for item in self.__friends]
 
     def __create_network(self):
         """Cria a rede."""
-        pass
+        network: Network = Network(self.__selected_tweet.user_id)
+        for ret in self.__retweets:
+            if ret in self.__friends:
+                print("Amigo")
+            else:
+                print("Não amigo")
 
 
 if __name__ == "__main__":

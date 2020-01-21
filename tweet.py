@@ -34,3 +34,7 @@ class Tweet:
     @property
     def user_id(self):
         return self.__user_id
+
+    @property
+    def tweet_text(self):
+        return self.__tweet_text
