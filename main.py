@@ -21,6 +21,7 @@ class Main:
         self.__friends = []
         self.__follows = []
         self.__selected_tweet: Tweet = None
+        self.__universal_counter: int = 0
 
     def execute(self):
         """Execução principal da classe."""
@@ -57,7 +58,7 @@ class Main:
         else:
             self.__load_tweets()
         self.__get_retweets()
-        self.__get_friends()
+        self.__get_friends(self.__selected_tweet.user_id)
         self.__create_network()
 
     @staticmethod
@@ -115,22 +116,38 @@ class Main:
         response = self.__oauth.get(url, params=params)
         self.__retweets = json.loads(response.text)["ids"]
 
-    def __get_friends(self):
+    def __get_friends(self, user_id):
         """Busca os amigos do usuário que escreveu o tweet."""
         url: str = 'https://api.twitter.com/1.1/friends/ids.json'
-        params = {"user_id": self.__selected_tweet.user_id}
+        params = {"user_id": user_id}
         response = self.__oauth.get(url, params=params)
+        print(user_id)
         self.__friends = json.loads(response.text)["ids"]
         self.__friends = [str(item) for item in self.__friends]
 
     def __create_network(self):
         """Cria a rede."""
         network: Network = Network(self.__selected_tweet.user_id)
-        for ret in self.__retweets:
+        retweets_temp = self.__retweets
+        self.__create_network_recursive(network, retweets_temp)
+        print('XXX')
+
+    def __create_network_recursive(self, network, retweets_temp):
+        retweets = retweets_temp
+        if not retweets_temp:
+            retweets = self.__retweets
+        for ret in retweets:
             if ret in self.__friends:
-                print("Amigo")
+                net: Network = Network(ret)
+                network.children.append(net)
             else:
-                print("Não amigo")
+                if ret not in retweets_temp:
+                    retweets_temp.append(ret)
+        if network.children and retweets_temp and self.__universal_counter < 50:
+            self.__universal_counter = self.__universal_counter + 1
+            chi = network.children.pop()
+            self.__get_friends(chi.id)
+            self.__create_network_recursive(chi, retweets_temp)
 
 
 if __name__ == "__main__":
