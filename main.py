@@ -119,35 +119,41 @@ class Main:
     def __get_friends(self, user_id):
         """Busca os amigos do usuário que escreveu o tweet."""
         url: str = 'https://api.twitter.com/1.1/friends/ids.json'
-        params = {"user_id": user_id}
-        response = self.__oauth.get(url, params=params)
+        params = {"user_id": user_id, "count": "5000"}
+        response = None
+        while response is None or response.status_code == 429:
+            response = self.__api.request('friends/ids', params=params)
         print(user_id)
         self.__friends = json.loads(response.text)["ids"]
         self.__friends = [str(item) for item in self.__friends]
 
     def __create_network(self):
         """Cria a rede."""
+        retweets_temp = []
         network: Network = Network(self.__selected_tweet.user_id)
-        retweets_temp = self.__retweets
-        self.__create_network_recursive(network, retweets_temp)
-        print('XXX')
-
-    def __create_network_recursive(self, network, retweets_temp):
-        retweets = retweets_temp
-        if not retweets_temp:
-            retweets = self.__retweets
-        for ret in retweets:
+        for ret in self.__retweets:
             if ret in self.__friends:
                 net: Network = Network(ret)
                 network.children.append(net)
             else:
                 if ret not in retweets_temp:
                     retweets_temp.append(ret)
-        if network.children and retweets_temp and self.__universal_counter < 50:
-            self.__universal_counter = self.__universal_counter + 1
-            chi = network.children.pop()
+        self.__create_network_recursive(network, retweets_temp)
+        print('XXX')
+
+    def __create_network_recursive(self, network, retweets_temp):
+        for chi in network.children:
             self.__get_friends(chi.id)
-            self.__create_network_recursive(chi, retweets_temp)
+            for ret in self.__retweets:
+                if ret in self.__friends:
+                    net: Network = Network(ret)
+                    chi.children.append(net)
+                else:
+                    if ret not in retweets_temp:
+                        retweets_temp.append(ret)
+            if network.children and retweets_temp and self.__universal_counter < 50:
+                self.__universal_counter = self.__universal_counter + 1
+                self.__create_network_recursive(chi, retweets_temp)
 
 
 if __name__ == "__main__":
