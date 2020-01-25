@@ -28,7 +28,7 @@ class Main:
     def execute(self):
         """Execução principal da classe."""
         self.__find_real_news()
-        self.__find_fake_news()
+        # self.__find_fake_news()
 
     @staticmethod
     def __get_other_authentication():
@@ -56,12 +56,13 @@ class Main:
     def __execute_network(self, search_term, fileName):
         """Executa a rede."""
         if not self.__check_json_file(fileName):
-            self.__find_tweet(search_term, fileName)
+            print("nova consulta")
+            # self.__find_tweet(search_term, fileName)
         else:            
             self.__load_tweets(fileName)
         self.__get_retweets()
         self.__get_friends(self.__selected_tweet.user_id)
-        self.__create_network()
+        # self.__create_network()
 
     @staticmethod
     def __check_json_file(fileName):
@@ -105,6 +106,11 @@ class Main:
         self.__load_tweets(fileName)
         self.__get_best_tweet()
 
+    def save(self, fileName, file):# Método para salvar arquivos
+        self.__save_file = open(Constants.FOLDER_PATH + fileName, 'w')
+        self.__save_file.write(json.dumps(file.json()))
+        self.__save_file.close()
+
     def __get_best_tweet(self):
         """Selecionar o tweet com mais seguidores."""        
         tweet_selected: Tweet = None
@@ -121,7 +127,7 @@ class Main:
     def __get_retweets(self):
         """Recupera os retweets."""
         print("get retweets")
-        print(self.__selected_tweet.retweeted_status_id)
+        # print(self.__selected_tweet.retweeted_status_id)
         url: str = 'https://api.twitter.com/1.1/statuses/retweeters/ids.json'
         params = {"id": str(self.__selected_tweet.retweeted_status_id), "count": "100", "stringify_ids": "true"}
         response = self.__oauth.get(url, params=params)
@@ -132,12 +138,17 @@ class Main:
         print("__get_friends")            
         print(user_id)
         url: str = 'https://api.twitter.com/1.1/friends/ids.json'
-        params = {"user_id": user_id, "count": "50"}
+        params = {"user_id": user_id, "count": "500"}
         response = None
         while response is None or response.status_code == 429:
             response = self.__api.request('friends/ids', params=params)
+            # pprint(response)
+        # response.            
+        self.save("friends"+str(user_id)+".json",response) 
         self.__friends = json.loads(response.text)["ids"]
+        friendsToSave = {'user_id':str(user_id),'friends': str(self.__friends) }
         self.__friends = [str(item) for item in self.__friends]
+        # print(self.__friends)
 
     def __create_network(self):
         """Cria a rede."""
