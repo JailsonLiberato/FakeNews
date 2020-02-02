@@ -1,7 +1,6 @@
 import json
-import os,sys
+import os
 from os.path import isfile, join
-from pprint import pprint
 
 from TwitterAPI import TwitterAPI
 from requests_oauthlib import OAuth1Session
@@ -58,11 +57,11 @@ class Main:
         if not self.__check_json_file(fileName):
             print("nova consulta")
             # self.__find_tweet(search_term, fileName)
-        else:            
+        else:
             self.__load_tweets(fileName)
         self.__get_retweets()
         self.__get_friends(self.__selected_tweet.user_id)
-        # self.__create_network()
+        self.__create_network()
 
     @staticmethod
     def __check_json_file(fileName):
@@ -72,7 +71,7 @@ class Main:
         return fileName in onlyfiles
 
     def __load_tweets(self, fileName):
-        """Carrega a consulta dos tweets do arquivo json."""        
+        """Carrega a consulta dos tweets do arquivo json."""
         with open(Constants.FOLDER_PATH + fileName) as json_file:
             x = json_file.read()
             for tweet in json.loads(x)['results']:
@@ -80,7 +79,7 @@ class Main:
                 retweeted_status_id = None
                 # print("__get_best_tweet")
                 # pprint (tweet)
-                
+
                 if 'retweeted_status' in tweet:
                     retweet_count: int = tweet['retweeted_status']['retweet_count']
                     retweeted_status_id = tweet['retweeted_status']['id']
@@ -89,7 +88,7 @@ class Main:
                 tweet_id = tweet['id']
                 user_id = tweet['user']['id']
                 tweet_text = tweet['text']
-                
+
                 t: Tweet = Tweet(tweet_id, user_id, tweet_text, followers_count, friends_count, retweeted_status_id,
                                  retweet_count)
                 self.__tweets.append(t)
@@ -108,13 +107,13 @@ class Main:
 
     def save(self, fileName, file):# Método para salvar arquivos
         self.__save_file = open(Constants.FOLDER_PATH + fileName, 'w')
-        self.__save_file.write(json.dumps(file.json()))
+        self.__save_file.write(file)
         self.__save_file.close()
 
     def __get_best_tweet(self):
-        """Selecionar o tweet com mais seguidores."""        
+        """Selecionar o tweet com mais seguidores."""
         tweet_selected: Tweet = None
-        for tweet in self.__tweets:            
+        for tweet in self.__tweets:
             if tweet_selected is None:  # RT' not in tweet.tweet_text and
                 tweet_selected = tweet
             elif tweet_selected is not None and tweet_selected.retweet_count < tweet.retweet_count \
@@ -135,20 +134,26 @@ class Main:
 
     def __get_friends(self, user_id):
         """Busca os amigos do usuário que escreveu o tweet."""
-        print("__get_friends")            
+        print("__get_friends")
         print(user_id)
-        url: str = 'https://api.twitter.com/1.1/friends/ids.json'
-        params = {"user_id": user_id, "count": "500"}
-        response = None
-        while response is None or response.status_code == 429:
-            response = self.__api.request('friends/ids', params=params)
-            # pprint(response)
-        # response.            
-        self.save("friends"+str(user_id)+".json",response) 
-        self.__friends = json.loads(response.text)["ids"]
-        friendsToSave = {'user_id':str(user_id),'friends': str(self.__friends) }
-        self.__friends = [str(item) for item in self.__friends]
-        # print(self.__friends)
+
+        if not self.__check_json_file('friends'):
+            print("nova consulta")
+            url: str = 'https://api.twitter.com/1.1/friends/ids.json'
+            params = {"user_id": user_id, "count": "500"}
+            response = None
+            while response is None or response.status_code == 429:
+                response = self.__api.request('friends/ids', params=params)
+
+            # response.
+            self.__friends = json.loads(response.text)["ids"]
+            friendsToSave = {"user_id": self.__friends}
+            print(friendsToSave)
+            self.save("friends.json", json.dumps(str(friendsToSave)))
+            self.__friends = [str(item) for item in self.__friends]
+            # print(self.__friends)
+        else:
+            print("carregar arquivo")
 
     def __create_network(self):
         """Cria a rede."""
