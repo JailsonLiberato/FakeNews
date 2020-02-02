@@ -1,7 +1,6 @@
 import json
-import os,sys
+import os
 from os.path import isfile, join
-from pprint import pprint
 
 from TwitterAPI import TwitterAPI
 from requests_oauthlib import OAuth1Session
@@ -58,11 +57,11 @@ class Main:
         if not self.__check_json_file(fileName):
             print("nova consulta")
             # self.__find_tweet(search_term, fileName)
-        else:            
+        else:
             self.__load_tweets(fileName)
         self.__get_retweets()
         self._friends(self.__selected_tweet.user_id)
-        # self.__create_network()
+        self.__create_network()
 
     @staticmethod
     def __check_json_file(fileName):
@@ -72,7 +71,7 @@ class Main:
         return fileName in onlyfiles
 
     def __load_tweets(self, fileName):
-        """Carrega a consulta dos tweets do arquivo json."""        
+        """Carrega a consulta dos tweets do arquivo json."""
         with open(Constants.FOLDER_PATH + fileName) as json_file:
             x = json_file.read()
             for tweet in json.loads(x)['results']:
@@ -80,7 +79,7 @@ class Main:
                 retweeted_status_id = None
                 # print("__get_best_tweet")
                 # pprint (tweet)
-                
+
                 if 'retweeted_status' in tweet:
                     retweet_count: int = tweet['retweeted_status']['retweet_count']
                     retweeted_status_id = tweet['retweeted_status']['id']
@@ -89,7 +88,7 @@ class Main:
                 tweet_id = tweet['id']
                 user_id = tweet['user']['id']
                 tweet_text = tweet['text']
-                
+
                 t: Tweet = Tweet(tweet_id, user_id, tweet_text, followers_count, friends_count, retweeted_status_id,
                                  retweet_count)
                 self.__tweets.append(t)
@@ -112,9 +111,9 @@ class Main:
         self.__save_file.close()
 
     def __get_best_tweet(self):
-        """Selecionar o tweet com mais seguidores."""        
+        """Selecionar o tweet com mais seguidores."""
         tweet_selected: Tweet = None
-        for tweet in self.__tweets:            
+        for tweet in self.__tweets:
             if tweet_selected is None:  # RT' not in tweet.tweet_text and
                 tweet_selected = tweet
             elif tweet_selected is not None and tweet_selected.retweet_count < tweet.retweet_count \
@@ -142,7 +141,7 @@ class Main:
             self.__request_friends(user_id)
         else:
             print("carregar arquivo, e percorrer lista recursivamente, obtendo a lista de amigos para cada id na lista e na lista de amigos desses ids")    
-        sys.exit(-1)            
+        # sys.exit(-1)            
         # self.__friends = [str(item) for item in self.__friends]
         # print(self.__friends)
     
