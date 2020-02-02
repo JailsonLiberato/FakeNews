@@ -61,7 +61,7 @@ class Main:
         else:            
             self.__load_tweets(fileName)
         self.__get_retweets()
-        self.__get_friends(self.__selected_tweet.user_id)
+        self._friends(self.__selected_tweet.user_id)
         # self.__create_network()
 
     @staticmethod
@@ -108,7 +108,7 @@ class Main:
 
     def save(self, fileName, file):# Método para salvar arquivos
         self.__save_file = open(Constants.FOLDER_PATH + fileName, 'w')
-        self.__save_file.write(json.dumps(file.json()))
+        self.__save_file.write(json.dumps(file))
         self.__save_file.close()
 
     def __get_best_tweet(self):
@@ -133,22 +133,30 @@ class Main:
         response = self.__oauth.get(url, params=params)
         self.__retweets = json.loads(response.text)["ids"]
 
-    def __get_friends(self, user_id):
+    def _friends(self, user_id):
         """Busca os amigos do usuário que escreveu o tweet."""
-        print("__get_friends")            
+        print("__friends")            
         print(user_id)
+        if not self.__check_json_file("friends.json"):
+            print("nova consulta")
+            self.__request_friends(user_id)
+        else:
+            print("carregar arquivo, e percorrer lista recursivamente, obtendo a lista de amigos para cada id na lista e na lista de amigos desses ids")    
+        sys.exit(-1)            
+        # self.__friends = [str(item) for item in self.__friends]
+        # print(self.__friends)
+    
+    def __request_friends(self, user_id):
         url: str = 'https://api.twitter.com/1.1/friends/ids.json'
         params = {"user_id": user_id, "count": "500"}
         response = None
         while response is None or response.status_code == 429:
             response = self.__api.request('friends/ids', params=params)
-            # pprint(response)
-        # response.            
-        self.save("friends"+str(user_id)+".json",response) 
+
         self.__friends = json.loads(response.text)["ids"]
-        friendsToSave = {'user_id':str(user_id),'friends': str(self.__friends) }
-        self.__friends = [str(item) for item in self.__friends]
-        # print(self.__friends)
+        friendsToSave =json.dumps( {str(user_id): self.__friends })
+        # print(friendsToSave))    
+        self.save("friends.json",json.loads(friendsToSave) )
 
     def __create_network(self):
         """Cria a rede."""
@@ -167,7 +175,7 @@ class Main:
 
     def __create_network_recursive(self, network, retweets_temp):
         for chi in network.children:
-            self.__get_friends(chi.id)
+            self.__friends(chi.id)
             for ret in self.__retweets:
                 if ret in self.__friends:
                     net: Network = Network(ret)
