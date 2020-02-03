@@ -1,6 +1,8 @@
 import json
 import os
+import time
 from os.path import isfile, join
+from urllib.error import HTTPError
 
 from TwitterAPI import TwitterAPI
 from requests_oauthlib import OAuth1Session
@@ -16,7 +18,8 @@ class Main:
     def __init__(self):
         self.__api = self.__get_authentication()
         self.__oauth = self.__get_other_authentication()
-        self.__save_file = None
+        self.__search_file = None
+        self.__friend_file = None
         self.__tweets = []
         self.__retweets = []
         self.__friends = []
@@ -45,18 +48,17 @@ class Main:
     def __find_fake_news(self):
         """Encontra fake news."""
         search_term = 'Haddad kit gay -is:retweet -is:reply  lang:pt'
-        self.__execute_network(search_term,"fake_news.json")
+        self.__execute_network(search_term, "fake_news.json")
 
     def __find_real_news(self):
         """Encontra real news"""
         search_term = 'Auto da compadecida lang:pt'
-        self.__execute_network(search_term,"real_news.json")
+        self.__execute_network(search_term, "real_news.json")
 
     def __execute_network(self, search_term, fileName):
         """Executa a rede."""
         if not self.__check_json_file(fileName):
-            print("nova consulta")
-            # self.__find_tweet(search_term, fileName)
+            self.__find_tweet(search_term, fileName)
         else:
             self.__load_tweets(fileName)
         self.__get_retweets()
@@ -70,16 +72,13 @@ class Main:
         # return len(os.listdir(Constants.FOLDER_PATH)) == 0
         return fileName in onlyfiles
 
-    def __load_tweets(self, fileName):
+    def __load_tweets(self, file_name):
         """Carrega a consulta dos tweets do arquivo json."""
-        with open(Constants.FOLDER_PATH + fileName) as json_file:
+        with open(Constants.FOLDER_PATH + file_name) as json_file:
             x = json_file.read()
             for tweet in json.loads(x)['results']:
                 retweet_count: int = 0
                 retweeted_status_id = None
-                # print("__get_best_tweet")
-                # pprint (tweet)
-
                 if 'retweeted_status' in tweet:
                     retweet_count: int = tweet['retweeted_status']['retweet_count']
                     retweeted_status_id = tweet['retweeted_status']['id']
@@ -93,22 +92,16 @@ class Main:
                                  retweet_count)
                 self.__tweets.append(t)
         self.__get_best_tweet()
-        # sys.exit(-1)
 
     def __find_tweet(self, search_term, fileName):
         """Encontra o tweet."""
-        # tweet_result = self.__api.request('tweets/search/%s/:%s' % (Constants.PRODUCT, Constants.LABEL),
-        #                                   {'query': search_term})
-        self.__save_file = open(Constants.FOLDER_PATH + fileName, 'w')
-        self.__save_file.write(json.dumps(tweet_result.json()))
-        self.__save_file.close()
+        tweet_result = self.__api.request('tweets/search/%s/:%s' % (Constants.PRODUCT, Constants.LABEL),
+                                          {'query': search_term})
+        self.__search_file = open(Constants.FOLDER_PATH + fileName, 'w')
+        self.__search_file.write(json.dumps(tweet_result.json()))
+        self.__search_file.close()
         self.__load_tweets(fileName)
         self.__get_best_tweet()
-
-    def save(self, fileName, file):# Método para salvar arquivos
-        self.__save_file = open(Constants.FOLDER_PATH + fileName, 'w')
-        self.__save_file.write(json.dumps(file))
-        self.__save_file.close()
 
     def __get_best_tweet(self):
         """Selecionar o tweet com mais seguidores."""
@@ -118,15 +111,13 @@ class Main:
                 tweet_selected = tweet
             elif tweet_selected is not None and tweet_selected.retweet_count < tweet.retweet_count \
                     and tweet_selected.followers_count < \
-                    tweet.followers_count:  # and 'RT' not in tweet.tweet_text:
+                    tweet.followers_count:
                 tweet_selected = tweet
         self.__selected_tweet = tweet_selected
-
 
     def __get_retweets(self):
         """Recupera os retweets."""
         print("get retweets")
-        # print(self.__selected_tweet.retweeted_status_id)
         url: str = 'https://api.twitter.com/1.1/statuses/retweeters/ids.json'
         params = {"id": str(self.__selected_tweet.retweeted_status_id), "count": "100", "stringify_ids": "true"}
         response = self.__oauth.get(url, params=params)
@@ -134,32 +125,53 @@ class Main:
 
     def _friends(self, user_id):
         """Busca os amigos do usuário que escreveu o tweet."""
-        print("__friends")            
-        print(user_id)
         if not self.__check_json_file("friends.json"):
-            print("nova consulta")
-            self.__request_friends(user_id)
-        else:
-            print("carregar arquivo, e percorrer lista recursivamente, obtendo a lista de amigos para cada id na lista e na lista de amigos desses ids")    
-        # sys.exit(-1)            
-        # self.__friends = [str(item) for item in self.__friends]
-        # print(self.__friends)
-    
-    def __request_friends(self, user_id):
-        url: str = 'https://api.twitter.com/1.1/friends/ids.json'
-        params = {"user_id": user_id, "count": "500"}
-        response = None
-        while response is None or response.status_code == 429:
-            response = self.__api.request('friends/ids', params=params)
+            self.__create_friends_file(user_id)
+            self.__load_friend_file(user_id)
+        elif not self.__check_friends_file(user_id):
+            self.__write_friend_file(user_id)
 
-        self.__friends = json.loads(response.text)["ids"]
-        friendsToSave =json.dumps( {str(user_id): self.__friends })
-        # print(friendsToSave))    
-        self.save("friends.json",json.loads(friendsToSave) )
+    def __check_friends_file(self, user_id):
+        """Checar se o user_id está presente nas chaves da consulta."""
+        self.__load_friend_file(user_id)
+
+    def __write_friend_file(self, user_id):
+        """Escrever o friend no arquivo."""
+        pass
+
+    def __create_friends_file(self, user_id):
+        """Cria um arquivo com a lista de amigos."""
+        self.__request_friends(user_id)
+        self.__friend_file = open(Constants.FOLDER_PATH + Constants.FILE_FRIENDS, 'w')
+        friends_dict = {
+            user_id: self.__friends
+        }
+        self.__friend_file.write(json.dumps(friends_dict))
+        self.__friend_file.write("\n")
+        self.__friend_file.close()
+
+    def __request_friends(self, user_id):
+        try:
+            params = {"user_id": user_id, "count": "500"}
+            response = self.__api.request('friends/ids', params=params)
+            self.__friends = json.loads(response.text)["ids"]
+        except HTTPError as e:
+            if e.code == 429:
+                time.sleep(5)
+
+    def __load_friend_file(self, user_id):
+        """Carrega os amigos do user_id do arquivo."""
+        with open("files/" + Constants.FILE_FRIENDS, "r") as json_file:
+            x = json_file.read()
+            self.__friend_file = json.loads(x).items()
+            for key, value in self.__friend_file:
+                if user_id == int(key):
+                    self.__friends = value
+                    break
+            json_file.close()
 
     def __create_network(self):
         """Cria a rede."""
-        # print("__create_network")
         retweets_temp = []
         network: Network = Network(self.__selected_tweet.user_id)
         for ret in self.__retweets:

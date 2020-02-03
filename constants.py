@@ -8,6 +8,7 @@ class Constants:
     """Arquivos JSON"""
     FOLDER_PATH: str = './files/'
     FILE_NAME: str = 'file.json'
+    FILE_FRIENDS: str = 'friends.json'
 
     """Propriedades consulta premium."""
     PRODUCT = 'fullarchive'
