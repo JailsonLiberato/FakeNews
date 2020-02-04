@@ -18,8 +18,6 @@ class Main:
     def __init__(self):
         self.__api = self.__get_authentication()
         self.__oauth = self.__get_other_authentication()
-        self.__search_file = None
-        self.__friend_file = None
         self.__tweets = []
         self.__retweets = []
         self.__friends = []
@@ -62,7 +60,7 @@ class Main:
         else:
             self.__load_tweets(fileName)
         self.__get_retweets()
-        self._friends(self.__selected_tweet.user_id)
+        self.__get_friends(self.__selected_tweet.user_id)
         self.__create_network()
 
     @staticmethod
@@ -97,9 +95,9 @@ class Main:
         """Encontra o tweet."""
         tweet_result = self.__api.request('tweets/search/%s/:%s' % (Constants.PRODUCT, Constants.LABEL),
                                           {'query': search_term})
-        self.__search_file = open(Constants.FOLDER_PATH + fileName, 'w')
-        self.__search_file.write(json.dumps(tweet_result.json()))
-        self.__search_file.close()
+        search_file = open(Constants.FOLDER_PATH + fileName, 'w')
+        search_file.write(json.dumps(tweet_result.json()))
+        search_file.close()
         self.__load_tweets(fileName)
         self.__get_best_tweet()
 
@@ -123,7 +121,7 @@ class Main:
         response = self.__oauth.get(url, params=params)
         self.__retweets = json.loads(response.text)["ids"]
 
-    def _friends(self, user_id):
+    def __get_friends(self, user_id):
         """Busca os amigos do usuário que escreveu o tweet."""
         if not self.__check_json_file("friends.json"):
             self.__create_friends_file(user_id)
@@ -133,22 +131,32 @@ class Main:
 
     def __check_friends_file(self, user_id):
         """Checar se o user_id está presente nas chaves da consulta."""
-        self.__load_friend_file(user_id)
+        return self.__load_friend_file(user_id)
 
     def __write_friend_file(self, user_id):
         """Escrever o friend no arquivo."""
-        pass
+        self.__request_friends(user_id)
+        with open(Constants.FOLDER_PATH + Constants.FILE_FRIENDS, 'a') as friend_file:
+            friends_dict = {
+                user_id: self.__friends
+            }
+            friend_file.seek(-1, os.SEEK_END)
+            friend_file.truncate()
+            friend_file.write(",")
+            friend_file.write(json.dumps(friends_dict))
+            friend_file.write("\n")
+            friend_file.close()
 
     def __create_friends_file(self, user_id):
         """Cria um arquivo com a lista de amigos."""
         self.__request_friends(user_id)
-        self.__friend_file = open(Constants.FOLDER_PATH + Constants.FILE_FRIENDS, 'w')
-        friends_dict = {
-            user_id: self.__friends
-        }
-        self.__friend_file.write(json.dumps(friends_dict))
-        self.__friend_file.write("\n")
-        self.__friend_file.close()
+        with open(Constants.FOLDER_PATH + Constants.FILE_FRIENDS, 'w') as friend_file:
+            friends_dict = {
+                user_id: self.__friends
+            }
+            friend_file.write(json.dumps(friends_dict))
+            friend_file.write("\n")
+            friend_file.close()
 
     def __request_friends(self, user_id):
         try:
@@ -163,40 +171,35 @@ class Main:
         """Carrega os amigos do user_id do arquivo."""
         with open("files/" + Constants.FILE_FRIENDS, "r") as json_file:
             x = json_file.read()
-            self.__friend_file = json.loads(x).items()
-            for key, value in self.__friend_file:
+            friend_file = json.loads(x).items()
+            flag: bool = False
+            for key, value in friend_file:
                 if user_id == int(key):
                     self.__friends = value
+                    flag = True
                     break
             json_file.close()
+            return flag
 
     def __create_network(self):
         """Cria a rede."""
-        retweets_temp = []
         network: Network = Network(self.__selected_tweet.user_id)
         for ret in self.__retweets:
-            if ret in self.__friends:
-                net: Network = Network(ret)
-                network.children.append(net)
-            else:
-                if ret not in retweets_temp:
-                    retweets_temp.append(ret)
-        self.__create_network_recursive(network, retweets_temp)
-        print('XXX')
+            if int(ret) in self.__friends:
+                network_friend: Network = Network(str(ret))
+                network.children.append(network_friend)
+        self.__create_network_recursive(network)
 
-    def __create_network_recursive(self, network, retweets_temp):
+    def __create_network_recursive(self, network):
         for chi in network.children:
-            self.__friends(chi.id)
+            self.__get_friends(chi.id)
             for ret in self.__retweets:
                 if ret in self.__friends:
                     net: Network = Network(ret)
                     chi.children.append(net)
-                else:
-                    if ret not in retweets_temp:
-                        retweets_temp.append(ret)
-            if network.children and retweets_temp and self.__universal_counter < 50:
+            if network.children and self.__universal_counter < 50:
                 self.__universal_counter = self.__universal_counter + 1
-                self.__create_network_recursive(chi, retweets_temp)
+                self.__create_network_recursive(chi)
 
 
 if __name__ == "__main__":
