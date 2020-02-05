@@ -136,16 +136,22 @@ class Main:
     def __write_friend_file(self, user_id):
         """Escrever o friend no arquivo."""
         self.__request_friends(user_id)
-        with open(Constants.FOLDER_PATH + Constants.FILE_FRIENDS, 'a') as friend_file:
+        with open(Constants.FOLDER_PATH + Constants.FILE_FRIENDS, 'r') as friend_read_file:
             friends_dict = {
                 user_id: self.__friends
             }
-            friend_file.seek(-1, os.SEEK_END)
-            friend_file.truncate()
-            friend_file.write(",")
-            friend_file.write(json.dumps(friends_dict))
-            friend_file.write("\n")
-            friend_file.close()
+            file_txt = friend_read_file.read()
+            friend_read_file.close()
+            file_txt = file_txt[:-2]
+            with open(Constants.FOLDER_PATH + Constants.FILE_FRIENDS, "w") as friend_write_file:
+                friend_write_file.write(file_txt)
+                friend_write_file.write(", ")
+                friend_write_file.write("\n")
+                next_data = json.dumps(friends_dict)
+                next_data = next_data[1:]
+                friend_write_file.write(next_data)
+
+                friend_write_file.close()
 
     def __create_friends_file(self, user_id):
         """Cria um arquivo com a lista de amigos."""
@@ -169,7 +175,7 @@ class Main:
 
     def __load_friend_file(self, user_id):
         """Carrega os amigos do user_id do arquivo."""
-        with open("files/" + Constants.FILE_FRIENDS, "r") as json_file:
+        with open(Constants.FOLDER_PATH + Constants.FILE_FRIENDS, "r") as json_file:
             x = json_file.read()
             friend_file = json.loads(x).items()
             flag: bool = False

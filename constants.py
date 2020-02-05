@@ -6,7 +6,7 @@ class Constants:
     ACCESS_TOKEN_SECRET = "9R4DTGn1fdsrNuNlvSQITuGExMwycCHD7pr6wXsHHfrAv"
 
     """Arquivos JSON"""
-    FOLDER_PATH: str = './files/'
+    FOLDER_PATH: str = 'files/'
     FILE_NAME: str = 'file.json'
     FILE_FRIENDS: str = 'friends.json'
 
