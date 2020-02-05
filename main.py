@@ -11,6 +11,9 @@ from constants import Constants
 from network import Network
 from tweet import Tweet
 
+import networkx as nx
+import matplotlib.pyplot as plt
+
 
 class Main:
     """Classe principal do programa."""
@@ -62,6 +65,7 @@ class Main:
         self.__get_retweets()
         self.__get_friends(self.__selected_tweet.user_id)
         self.__create_network()
+        self._draw_graph()
 
     @staticmethod
     def __check_json_file(fileName):
@@ -206,6 +210,22 @@ class Main:
             if network.children and self.__universal_counter < 50:
                 self.__universal_counter = self.__universal_counter + 1
                 self.__create_network_recursive(chi)
+    
+    def _draw_graph(self):
+        G=nx.Graph()
+        with open("files/" + Constants.FILE_FRIENDS, "r") as json_file:
+            x = json_file.read() # Ler o arquivo com as listas de amigos
+            self.__friend_file = json.loads(x).items()# obtém os itens presentes no arquivo como uma lista de (key, value)
+            
+            #key     #value
+        for user_id, friends in self.__friend_file: # friends representa a lista de amigos de user_id,
+            user_id = int(user_id)
+            for friend in friends:# percorre a lista de amigos e adiciona arestas que ligam cada amigo presente na lista ao user_id
+                G.add_edge(user_id,friend)
+        # nx.draw(G,with_labels=True) caso que gerar o grafo com o id que identifica cada vértice
+        nx.draw(G)
+        plt.savefig("tweets_Network.png") # salva o grafo em uma imagem
+        plt.show()
 
 
 if __name__ == "__main__":
