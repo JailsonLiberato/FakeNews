@@ -10,7 +10,12 @@ class Constants:
     FILE_FAKE_NAME: str = 'fake_news.json'
     FILE_REAL_NAME: str = 'real_news.json'
     FILE_FRIENDS: str = 'friends.json'
-    FILE_FOLLOWS: str = 'follows.json'
+    FILE_FOLLOWERS: str = 'followers.json'
+    FILE_RETWEETS: str = 'retweets.json'
+
+    """Request Type"""
+    REQUEST_TYPE_FRIENDS = 'friends/ids'
+    REQUEST_TYPE_FOLLOWERS = 'followers/ids'
 
     """Termos de consulta"""
     SEARCH_TERM_FAKE: str = 'coronavírus lang:pt'
@@ -21,3 +26,4 @@ class Constants:
 
     """TIPO DE ACESSO ARQUIVO"""
     ARQUIVO_ESCRITA_ZERADA: str = 'w'
+    ARQUIVO_APENAS_LEITURA: str = 'r'

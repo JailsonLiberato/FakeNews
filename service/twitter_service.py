@@ -1,6 +1,8 @@
 import json
+import time
+from urllib.error import HTTPError
 
-from tweet import Tweet
+from entity.tweet import Tweet
 from util.authenticator_util import AuthenticatorUtil
 from util.constants import Constants
 from util.file_util import FileUtil
@@ -13,6 +15,8 @@ class TwitterService:
         self.__filename = ''
         self.__search_term = ''
         self.__tweets = []
+        self.__friends = []
+        self.__standard_auth = AuthenticatorUtil.get_standard_authentication()
         self.__premium_auth = AuthenticatorUtil.get_premium_authentication()
 
     def search_tweet(self, search_term, filename):
@@ -53,21 +57,80 @@ class TwitterService:
 
     def __get_best_tweet(self):
         """Selecionar o tweet com mais retweet | seguidores."""
-        tweet_selected: Tweet = None
+        selected_tweet: Tweet = None
         for tweet in self.__tweets:
-            if tweet_selected is None:
-                tweet_selected = tweet
-            elif tweet_selected is not None and tweet_selected.retweet_count < tweet.retweet_count \
-                    and tweet_selected.followers_count < \
+            if selected_tweet is None:
+                selected_tweet = tweet
+            elif selected_tweet is not None and selected_tweet.retweet_count < tweet.retweet_count \
+                    and selected_tweet.followers_count < \
                     tweet.followers_count:
-                tweet_selected = tweet
-                return tweet_selected
+                selected_tweet = tweet
+                return selected_tweet
 
-    def get_retweets(self):
-        pass
+    def get_retweets(self, selected_tweet):
+        """Recupera os retweets."""
+        url: str = 'https://api.twitter.com/1.1/statuses/retweeters/ids.json'
+        params = {"id": str(selected_tweet.retweeted_status_id), "count": "100000", "stringify_ids": "true"}
+        response = self.__standard_auth.get(url, params=params)
+        return json.loads(response.text)["ids"]
 
-    def get_friends(self):
-        pass
+    def get_features(self, user_id, filename):
+        """Busca os amigos do usuário que escreveu o tweet."""
+        if not FileUtil.check_json_file(filename):
+            self.__create_file(user_id, filename)
+            return self.__load_file(user_id, filename)
+        elif not self.__load_file(user_id, filename) is None:
+            self.__write_file(user_id, filename)
 
-    def get_followers(self):
-        pass
+    def __create_file(self, user_id, filename):
+        """Cria um arquivo com a lista."""
+        values = self.__request_values(user_id, filename)
+        with open(Constants.FOLDER_PATH + filename, Constants.ARQUIVO_ESCRITA_ZERADA) as write_file:
+            values_dict = {
+                user_id: values
+            }
+            write_file.write(json.dumps(values_dict))
+            write_file.write("\n")
+            write_file.close()
+
+    def __write_file(self, user_id, filename):
+        """Escrever o friend/follow no arquivo."""
+        values = self.__request_values(user_id, filename)
+        with open(Constants.FOLDER_PATH + filename, Constants.ARQUIVO_APENAS_LEITURA) as read_file:
+            dict_values = {
+                user_id: values
+            }
+            file_txt = read_file.read()
+            read_file.close()
+            file_txt = file_txt[:-2]
+            with open(Constants.FOLDER_PATH + filename, Constants.ARQUIVO_ESCRITA_ZERADA) as write_file:
+                write_file.write(file_txt)
+                write_file.write(", ")
+                write_file.write("\n")
+                next_data = json.dumps(dict_values)
+                next_data = next_data[1:]
+                write_file.write(next_data)
+                write_file.close()
+
+    def __request_values(self, user_id, filename):
+        request_type = Constants.REQUEST_TYPE_FOLLOWERS if filename == Constants.FILE_FOLLOWERS \
+            else Constants.REQUEST_TYPE_FRIENDS
+        try:
+            params = {"user_id": user_id, "count": "100000"}
+            response = self.__premium_auth.request(request_type, params=params)
+            return json.loads(response.text)["ids"]
+        except HTTPError as e:
+            if e.code == 429:
+                time.sleep(5)
+
+    @staticmethod
+    def __load_file(user_id, filename):
+        """Carrega os amigos do user_id do arquivo."""
+        with open(Constants.FOLDER_PATH + filename, Constants.ARQUIVO_APENAS_LEITURA) as json_file:
+            text_file = json_file.read()
+            file_values = json.loads(text_file).items()
+            for key, value in file_values:
+                if str(user_id) == str(key):
+                    json_file.close()
+                    return value
+            return None
