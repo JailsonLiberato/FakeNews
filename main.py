@@ -1,20 +1,20 @@
 import json
 import time
 from urllib.error import HTTPError
-from file_util import FileUtil
+from util.file_util import FileUtil
 import matplotlib.pyplot as plt
 import networkx as nx
-from authenticator_util import AuthenticatorUtil
-from constants import Constants
+from util.authenticator_util import AuthenticatorUtil
+from util.constants import Constants
 from network import Network
 from tweet import Tweet
+from service.twitter_service import TwitterService
 
 
 class Main:
     """Classe principal do programa."""
 
     def __init__(self):
-        self.__premium_auth = AuthenticatorUtil.get_premium_authentication()
         self.__standard_auth = AuthenticatorUtil.get_standard_authentication()
         self.__tweets = []
         self.__retweets = []
@@ -22,76 +22,20 @@ class Main:
         self.__follows = []
         self.__selected_tweet: Tweet = None
         self.__universal_counter: int = 0
+        self.__twitter_service: TwitterService = TwitterService()
 
     def execute(self):
         """Execução principal da classe."""
-        # self.__find_real_news()
-        self.__find_fake_news()
-
-    def __find_fake_news(self):
-        """Encontra fake news."""
-        search_term = 'coronavírus lang:pt'
-        self.__execute_network(search_term, "fake_news.json")
-
-    def __find_real_news(self):
-        """Encontra real news"""
-        search_term = 'Auto da compadecida lang:pt'
-        self.__execute_network(search_term, "real_news.json")
+        self.__selected_tweet = self.__twitter_service.search_tweet(Constants.SEARCH_TERM_FAKE,
+                                                                    Constants.FILE_FAKE_NAME)
+        self.__retweets = self.__twitter_service.get_retweets()
+        self.__friends = self.__twitter_service.get_friends()
+        self.__followers = self.__twitter_service.get_followers()
 
     def __execute_network(self, search_term, fileName):
         """Executa a rede."""
-        if not FileUtil.check_json_file(fileName):
-            self.__find_tweet(search_term, fileName)
-        else:
-            self.__load_tweets(fileName)
-        self.__get_retweets()
-        self.__get_friends(self.__selected_tweet.user_id)
-        self.__get_follows(self.__selected_tweet.user_id)
         self.__create_network()
         # self._draw_graph()
-
-    def __load_tweets(self, file_name):
-        """Carrega a consulta dos tweets do arquivo json."""
-        with open(Constants.FOLDER_PATH + file_name) as json_file:
-            x = json_file.read()
-            for tweet in json.loads(x)['results']:
-                retweet_count: int = 0
-                retweeted_status_id = None
-                if 'retweeted_status' in tweet:
-                    retweet_count: int = tweet['retweeted_status']['retweet_count']
-                    retweeted_status_id = tweet['retweeted_status']['id']
-                followers_count: int = tweet['user']['followers_count']
-                friends_count: int = tweet['user']['friends_count']
-                tweet_id = tweet['id']
-                user_id = tweet['user']['id']
-                tweet_text = tweet['text']
-
-                t: Tweet = Tweet(tweet_id, user_id, tweet_text, followers_count, friends_count, retweeted_status_id,
-                                 retweet_count)
-                self.__tweets.append(t)
-        self.__get_best_tweet()
-
-    def __find_tweet(self, search_term, fileName):
-        """Encontra o tweet."""
-        tweet_result = self.__premium_auth.request('tweets/search/%s/:%s' % (Constants.PRODUCT, Constants.LABEL),
-                                          {'query': search_term})
-        search_file = open(Constants.FOLDER_PATH + fileName, 'w')
-        search_file.write(json.dumps(tweet_result.json()))
-        search_file.close()
-        self.__load_tweets(fileName)
-        self.__get_best_tweet()
-
-    def __get_best_tweet(self):
-        """Selecionar o tweet com mais seguidores."""
-        tweet_selected: Tweet = None
-        for tweet in self.__tweets:
-            if tweet_selected is None:  # RT' not in tweet.tweet_text and
-                tweet_selected = tweet
-            elif tweet_selected is not None and tweet_selected.retweet_count < tweet.retweet_count \
-                    and tweet_selected.followers_count < \
-                    tweet.followers_count:
-                tweet_selected = tweet
-        self.__selected_tweet = tweet_selected
 
     def __get_retweets(self):
         """Recupera os retweets."""

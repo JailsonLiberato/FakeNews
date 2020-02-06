@@ -1,6 +1,6 @@
 from TwitterAPI import TwitterAPI
 from requests_oauthlib import OAuth1Session
-from constants import Constants
+from util.constants import Constants
 
 
 class AuthenticatorUtil:
