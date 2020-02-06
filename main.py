@@ -1,14 +1,10 @@
 import json
-import os
 import time
-from os.path import isfile, join
 from urllib.error import HTTPError
-
+from file_util import FileUtil
 import matplotlib.pyplot as plt
 import networkx as nx
-from TwitterAPI import TwitterAPI
-from requests_oauthlib import OAuth1Session
-
+from authenticator_util import AuthenticatorUtil
 from constants import Constants
 from network import Network
 from tweet import Tweet
@@ -18,8 +14,8 @@ class Main:
     """Classe principal do programa."""
 
     def __init__(self):
-        self.__api = self.__get_authentication()
-        self.__oauth = self.__get_other_authentication()
+        self.__premium_auth = AuthenticatorUtil.get_premium_authentication()
+        self.__standard_auth = AuthenticatorUtil.get_standard_authentication()
         self.__tweets = []
         self.__retweets = []
         self.__friends = []
@@ -31,19 +27,6 @@ class Main:
         """Execução principal da classe."""
         # self.__find_real_news()
         self.__find_fake_news()
-
-    @staticmethod
-    def __get_other_authentication():
-        return OAuth1Session(Constants.CONSUMER_KEY,
-                             client_secret=Constants.CONSUMER_SECRET,
-                             resource_owner_key=Constants.ACCESS_TOKEN,
-                             resource_owner_secret=Constants.ACCESS_TOKEN_SECRET)
-
-    @staticmethod
-    def __get_authentication():
-        """Realiza a autenticação do Twitter."""
-        return TwitterAPI(Constants.CONSUMER_KEY, Constants.CONSUMER_SECRET,
-                          Constants.ACCESS_TOKEN, Constants.ACCESS_TOKEN_SECRET)
 
     def __find_fake_news(self):
         """Encontra fake news."""
@@ -57,7 +40,7 @@ class Main:
 
     def __execute_network(self, search_term, fileName):
         """Executa a rede."""
-        if not self.__check_json_file(fileName):
+        if not FileUtil.check_json_file(fileName):
             self.__find_tweet(search_term, fileName)
         else:
             self.__load_tweets(fileName)
@@ -66,13 +49,6 @@ class Main:
         self.__get_follows(self.__selected_tweet.user_id)
         self.__create_network()
         # self._draw_graph()
-
-    @staticmethod
-    def __check_json_file(fileName):
-        """Checa se o arquivo json foi criado."""
-        onlyfiles = [f for f in os.listdir('./files/') if isfile(join('./files/', f))]
-        # return len(os.listdir(Constants.FOLDER_PATH)) == 0
-        return fileName in onlyfiles
 
     def __load_tweets(self, file_name):
         """Carrega a consulta dos tweets do arquivo json."""
@@ -97,7 +73,7 @@ class Main:
 
     def __find_tweet(self, search_term, fileName):
         """Encontra o tweet."""
-        tweet_result = self.__api.request('tweets/search/%s/:%s' % (Constants.PRODUCT, Constants.LABEL),
+        tweet_result = self.__premium_auth.request('tweets/search/%s/:%s' % (Constants.PRODUCT, Constants.LABEL),
                                           {'query': search_term})
         search_file = open(Constants.FOLDER_PATH + fileName, 'w')
         search_file.write(json.dumps(tweet_result.json()))
@@ -122,12 +98,12 @@ class Main:
         print("get retweets")
         url: str = 'https://api.twitter.com/1.1/statuses/retweeters/ids.json'
         params = {"id": str(self.__selected_tweet.retweeted_status_id), "count": "100000", "stringify_ids": "true"}
-        response = self.__oauth.get(url, params=params)
+        response = self.__standard_auth.get(url, params=params)
         self.__retweets = json.loads(response.text)["ids"]
 
     def __get_friends(self, user_id):
         """Busca os amigos do usuário que escreveu o tweet."""
-        if not self.__check_json_file("friends.json"):
+        if not FileUtil.check_json_file("friends.json"):
             self.__create_friends_file(user_id)
             self.__load_friend_file(user_id)
         elif not self.__check_friends_file(user_id):
@@ -135,7 +111,7 @@ class Main:
 
     def __get_follows(self, user_id):
         """Busca os amigos do usuário que escreveu o tweet."""
-        if not self.__check_json_file("follows.json"):
+        if not FileUtil.check_json_file("follows.json"):
             self.__create_follows_file(user_id)
             self.__load_follow_file(user_id)
         elif not self.__check_follows_file(user_id):
@@ -209,7 +185,7 @@ class Main:
     def __request_friends(self, user_id):
         try:
             params = {"user_id": user_id, "count": "100000"}
-            response = self.__api.request('friends/ids', params=params)
+            response = self.__premium_auth.request('friends/ids', params=params)
             self.__friends = json.loads(response.text)["ids"]
         except HTTPError as e:
             if e.code == 429:
@@ -218,7 +194,7 @@ class Main:
     def __request_follows(self, user_id):
         try:
             params = {"user_id": user_id, "count": "100000"}
-            response = self.__api.request('followers/ids', params=params)
+            response = self.__premium_auth.request('followers/ids', params=params)
             self.__follows = json.loads(response.text)["ids"]
         except HTTPError as e:
             if e.code == 429:
