@@ -14,9 +14,9 @@ class Main:
         """Execução principal da classe."""
         selected_tweet = self.__twitter_service.search_tweet(Constants.SEARCH_TERM_FAKE,
                                                              Constants.FILE_FAKE_NAME)
-        retweets = self.__twitter_service.get_features(self.__selected_tweet, Constants.FILE_RETWEETS)
-        friends = self.__twitter_service.get_features(self.__selected_tweet, Constants.FILE_FRIENDS)
-        followers = self.__twitter_service.get_features(self.__selected_tweet, Constants.FILE_FOLLOWERS)
+        retweets = self.__twitter_service.get_features(selected_tweet, Constants.FILE_RETWEETS)
+        friends = self.__twitter_service.get_features(selected_tweet, Constants.FILE_FRIENDS)
+        followers = self.__twitter_service.get_features(selected_tweet, Constants.FILE_FOLLOWERS)
         self.__network_service.create_network(selected_tweet, retweets, friends, followers)
 
 

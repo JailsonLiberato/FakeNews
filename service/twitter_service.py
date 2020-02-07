@@ -67,27 +67,27 @@ class TwitterService:
                 selected_tweet = tweet
                 return selected_tweet
 
-    def get_retweets(self, selected_tweet):
+    def __get_retweets(self, selected_tweet):
         """Recupera os retweets."""
         url: str = 'https://api.twitter.com/1.1/statuses/retweeters/ids.json'
         params = {"id": str(selected_tweet.retweeted_status_id), "count": "100000", "stringify_ids": "true"}
         response = self.__standard_auth.get(url, params=params)
         return json.loads(response.text)["ids"]
 
-    def get_features(self, user_id, filename):
+    def get_features(self, selected_tweet, filename):
         """Busca os amigos do usuário que escreveu o tweet."""
         if not FileUtil.check_json_file(filename):
-            self.__create_file(user_id, filename)
-            return self.__load_file(user_id, filename)
-        elif not self.__load_file(user_id, filename) is None:
-            self.__write_file(user_id, filename)
+            self.__create_file(selected_tweet, filename)
+            return self.__load_file(selected_tweet.user_id, filename)
+        elif not self.__load_file(selected_tweet.user_id, filename) is None and filename is not Constants.FILE_RETWEETS:
+            self.__write_file(selected_tweet.user_id, filename)
 
-    def __create_file(self, user_id, filename):
+    def __create_file(self, selected_tweet, filename):
         """Cria um arquivo com a lista."""
-        values = self.__request_values(user_id, filename)
+        values = self.__request_values(selected_tweet, filename)
         with open(Constants.FOLDER_PATH + filename, Constants.ARQUIVO_ESCRITA_ZERADA) as write_file:
             values_dict = {
-                user_id: values
+                selected_tweet.user_id: values
             }
             write_file.write(json.dumps(values_dict))
             write_file.write("\n")
@@ -112,16 +112,19 @@ class TwitterService:
                 write_file.write(next_data)
                 write_file.close()
 
-    def __request_values(self, user_id, filename):
-        request_type = Constants.REQUEST_TYPE_FOLLOWERS if filename == Constants.FILE_FOLLOWERS \
-            else Constants.REQUEST_TYPE_FRIENDS
-        try:
-            params = {"user_id": user_id, "count": "100000"}
-            response = self.__premium_auth.request(request_type, params=params)
-            return json.loads(response.text)["ids"]
-        except HTTPError as e:
-            if e.code == 429:
-                time.sleep(5)
+    def __request_values(self, selected_tweet, filename):
+        if filename is not Constants.FILE_RETWEETS:
+            request_type = Constants.REQUEST_TYPE_FOLLOWERS if filename == Constants.FILE_FOLLOWERS \
+                else Constants.REQUEST_TYPE_FRIENDS
+            try:
+                params = {"user_id": selected_tweet.user_id, "count": "100000"}
+                response = self.__premium_auth.request(request_type, params=params)
+                return json.loads(response.text)["ids"]
+            except HTTPError as e:
+                if e.code == 429:
+                    time.sleep(5)
+        else:
+            self.__get_retweets(selected_tweet)
 
     @staticmethod
     def __load_file(user_id, filename):
