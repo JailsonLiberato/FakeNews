@@ -79,8 +79,11 @@ class TwitterService:
         if not FileUtil.check_json_file(filename):
             self.__create_file(selected_tweet, filename)
             return self.__load_file(selected_tweet.user_id, filename)
-        elif not self.__load_file(selected_tweet.user_id, filename) is None and filename is not Constants.FILE_RETWEETS:
-            self.__write_file(selected_tweet.user_id, filename)
+        else:
+            loaded_file = self.__load_file(selected_tweet.user_id, filename)
+            if loaded_file is None and filename is not Constants.FILE_RETWEETS:
+                self.__write_file(selected_tweet.user_id, filename)
+            return loaded_file
 
     def __create_file(self, selected_tweet, filename):
         """Cria um arquivo com a lista."""
@@ -117,14 +120,14 @@ class TwitterService:
             request_type = Constants.REQUEST_TYPE_FOLLOWERS if filename == Constants.FILE_FOLLOWERS \
                 else Constants.REQUEST_TYPE_FRIENDS
             try:
-                params = {"user_id": selected_tweet.user_id, "count": "100000"}
+                params = {"user_id": selected_tweet, "count": "100000"}
                 response = self.__premium_auth.request(request_type, params=params)
                 return json.loads(response.text)["ids"]
             except HTTPError as e:
                 if e.code == 429:
                     time.sleep(5)
         else:
-            self.__get_retweets(selected_tweet)
+            return self.__get_retweets(selected_tweet)
 
     @staticmethod
     def __load_file(user_id, filename):
