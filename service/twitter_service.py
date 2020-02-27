@@ -1,6 +1,7 @@
 import json
 import time
-from urllib.error import HTTPError
+
+import tweepy
 
 from entity.tweet import Tweet
 from util.authenticator_util import AuthenticatorUtil
@@ -16,6 +17,7 @@ class TwitterService:
         self.__search_term = ''
         self.__tweets = []
         self.__friends = []
+        self.__tweepy_auth = AuthenticatorUtil.get_tweepy_authentication()
         self.__standard_auth = AuthenticatorUtil.get_standard_authentication()
         self.__premium_auth = AuthenticatorUtil.get_premium_authentication()
 
@@ -74,16 +76,20 @@ class TwitterService:
         response = self.__standard_auth.get(url, params=params)
         return json.loads(response.text)["ids"]
 
+    def get_features_by_user_id(self, user_id, filename):
+        loaded_file = self.__load_file(user_id, filename)
+        if loaded_file is None and filename is not Constants.FILE_RETWEETS:
+            self.__write_file(user_id, filename)
+            loaded_file = self.__load_file(user_id, filename)
+        return loaded_file
+
     def get_features(self, selected_tweet, filename):
         """Busca os amigos do usuário que escreveu o tweet."""
         if not FileUtil.check_json_file(filename):
             self.__create_file(selected_tweet, filename)
             return self.__load_file(selected_tweet.user_id, filename)
         else:
-            loaded_file = self.__load_file(selected_tweet.user_id, filename)
-            if loaded_file is None and filename is not Constants.FILE_RETWEETS:
-                self.__write_file(selected_tweet.user_id, filename)
-            return loaded_file
+            return self.get_features_by_user_id(selected_tweet.user_id, filename)
 
     def __create_file(self, selected_tweet, filename):
         """Cria um arquivo com a lista."""
@@ -117,15 +123,21 @@ class TwitterService:
 
     def __request_values(self, selected_tweet, filename):
         if filename is not Constants.FILE_RETWEETS:
-            request_type = Constants.REQUEST_TYPE_FOLLOWERS if filename == Constants.FILE_FOLLOWERS \
-                else Constants.REQUEST_TYPE_FRIENDS
+            option = None
+            if filename is Constants.FILE_FRIENDS:
+                option = self.__tweepy_auth.friends_ids
+            elif filename is Constants.FILE_FOLLOWERS:
+                option = self.__tweepy_auth.followers_ids
             try:
-                params = {"user_id": selected_tweet, "count": "100000"}
-                response = self.__premium_auth.request(request_type, params=params)
-                return json.loads(response.text)["ids"]
-            except HTTPError as e:
-                if e.code == 429:
-                    time.sleep(5)
+                array_values = []
+                if 'user_id' in selected_tweet:
+                    selected_tweet = selected_tweet.user_id
+                for page in tweepy.Cursor(option, id=selected_tweet).pages():
+                    array_values.extend(page)
+                return array_values
+            except tweepy.TweepError:
+                print("Tweepy error...")
+                time.sleep(20)
         else:
             return self.__get_retweets(selected_tweet)
 

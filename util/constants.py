@@ -18,7 +18,7 @@ class Constants:
     REQUEST_TYPE_FOLLOWERS = 'followers/ids'
 
     """Termos de consulta"""
-    SEARCH_TERM_FAKE: str = 'coronavírus lang:pt'
+    SEARCH_TERM_FAKE: str = 'carnaval lang:pt'
 
     """Propriedades consulta premium."""
     PRODUCT = 'fullarchive'

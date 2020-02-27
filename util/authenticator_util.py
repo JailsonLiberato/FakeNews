@@ -1,5 +1,7 @@
+import tweepy
 from TwitterAPI import TwitterAPI
 from requests_oauthlib import OAuth1Session
+
 from util.constants import Constants
 
 
@@ -19,3 +21,10 @@ class AuthenticatorUtil:
         """Realiza a autenticação premium, que será utilizada apenas para consulta inicial do Twitter."""
         return TwitterAPI(Constants.CONSUMER_KEY, Constants.CONSUMER_SECRET,
                           Constants.ACCESS_TOKEN, Constants.ACCESS_TOKEN_SECRET)
+
+    @staticmethod
+    def get_tweepy_authentication():
+        """Realiza a autenticação tweepy."""
+        auth = tweepy.OAuthHandler(Constants.CONSUMER_KEY, Constants.CONSUMER_SECRET)
+        auth.set_access_token(Constants.ACCESS_TOKEN, Constants.ACCESS_TOKEN_SECRET)
+        return tweepy.API(auth)

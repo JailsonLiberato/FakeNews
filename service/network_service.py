@@ -1,3 +1,5 @@
+import json
+
 import matplotlib.pyplot as plt
 import networkx as nx
 
@@ -26,10 +28,10 @@ class NetworkService:
 
     def __create_network_recursive(self, network):
         for chi in network.children:
-            self.__friends = self.__twitter_service.get_features(chi.id, Constants.FILE_FRIENDS)
-            self.__followers = self.__twitter_service.get_features(chi.id, Constants.FILE_FOLLOWERS)
+            self.__friends = self.__twitter_service.get_features_by_user_id(chi.id, Constants.FILE_FRIENDS)
+            self.__followers = self.__twitter_service.get_features_by_user_id(chi.id, Constants.FILE_FOLLOWERS)
             for ret in self.__retweets:
-                if ret in self.__friends:
+                if int(ret) in self.__friends:
                     net: Network = Network(ret)
                     chi.children.append(net)
             if chi.children:
