@@ -111,8 +111,9 @@ class TwitterService:
             }
             file_txt = read_file.read()
             read_file.close()
-            file_txt = file_txt[:-2]
+            file_txt = file_txt[1:-2]
             with open(Constants.FOLDER_PATH + filename, Constants.ARQUIVO_ESCRITA_ZERADA) as write_file:
+                write_file.write("{")
                 write_file.write(file_txt)
                 write_file.write(", ")
                 write_file.write("\n")
@@ -130,7 +131,7 @@ class TwitterService:
                 option = self.__tweepy_auth.followers_ids
             try:
                 array_values = []
-                if 'user_id' in selected_tweet:
+                if hasattr(selected_tweet, 'user_id'):
                     selected_tweet = selected_tweet.user_id
                 for page in tweepy.Cursor(option, id=selected_tweet).pages():
                     array_values.extend(page)

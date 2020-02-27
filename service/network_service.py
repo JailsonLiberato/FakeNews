@@ -34,6 +34,7 @@ class NetworkService:
                 if int(ret) in self.__friends:
                     net: Network = Network(ret)
                     chi.children.append(net)
+                    self.__retweets.remove(ret)
             if chi.children:
                 self.__create_network_recursive(chi)
 
