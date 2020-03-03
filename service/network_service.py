@@ -1,5 +1,3 @@
-import json
-
 import matplotlib.pyplot as plt
 import networkx as nx
 
@@ -24,7 +22,8 @@ class NetworkService:
             if int(ret) in friends or int(ret) in followers:
                 network_friend: Network = Network(str(ret))
                 network.children.append(network_friend)
-        self.__create_network_recursive(network)
+        network = self.__create_network_recursive(network)
+        self.__draw_graph(network)
 
     def __create_network_recursive(self, network):
         for chi in network.children:
@@ -37,20 +36,18 @@ class NetworkService:
                     self.__retweets.remove(ret)
             if chi.children:
                 self.__create_network_recursive(chi)
+        return network
 
-    def __draw_graph(self):
-        G = nx.Graph()
-        with open(Constants.FOLDER_PATH + Constants.FILE_FRIENDS, "r") as json_file:
-            x = json_file.read()  # Ler o arquivo com as listas de amigos
-            self.__friend_file = json.loads(
-                x).items()  # obtém os itens presentes no arquivo como uma lista de (key, value)
+    def __edges_recursive(self, id, graph, network):
+        for chi in network.children:
+            graph.add_edge(id, chi.id)
+            if chi.children:
+                self.__edges_recursive(chi.id, graph, chi)
+        return graph
 
-            # key     #value
-        for user_id, friends in self.__friend_file:  # friends representa a lista de amigos de user_id,
-            user_id = int(user_id)
-            for friend in friends:  # percorre a lista de amigos e adiciona arestas que ligam cada amigo presente na lista ao user_id
-                G.add_edge(user_id, friend)
-        # nx.draw(G,with_labels=True) caso que gerar o grafo com o id que identifica cada vértice
-        nx.draw(G)
-        plt.savefig("tweets_Network.png")  # salva o grafo em uma imagem
+    def __draw_graph(self, network):
+        graph = nx.Graph()
+        self.__edges_recursive(network.id, graph, network)
+        nx.draw(graph)
+        plt.savefig("results/tweets_Network.png")
         plt.show()

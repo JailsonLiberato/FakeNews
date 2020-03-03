@@ -111,9 +111,8 @@ class TwitterService:
             }
             file_txt = read_file.read()
             read_file.close()
-            file_txt = file_txt[1:-2]
+            file_txt = file_txt[0:file_txt.rfind("}")]
             with open(Constants.FOLDER_PATH + filename, Constants.ARQUIVO_ESCRITA_ZERADA) as write_file:
-                write_file.write("{")
                 write_file.write(file_txt)
                 write_file.write(", ")
                 write_file.write("\n")
